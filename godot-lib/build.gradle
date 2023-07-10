@@ -1,0 +1,2 @@
+configurations.maybeCreate("default")
+artifacts.add("default", file('godot-lib.4.0.2.stable.template_release.aar'))
