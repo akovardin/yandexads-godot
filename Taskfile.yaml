@@ -1,0 +1,29 @@
+# https://taskfile.dev
+
+version: '3'
+
+vars:
+  GREETING: Hello, World!
+
+tasks:
+  default:
+    cmds:
+      - echo "{{.GREETING}}"
+    silent: true
+
+  build:
+    cmds:
+      - ./gradlew build
+      - cp godot-yandex-ads/YandexAds.gdap godot-yandex-ads/build/outputs/aar/YandexAds.gdap
+
+  example:
+    deps: [build]
+    cmds:
+      - cp godot-yandex-ads/build/outputs/aar/godot-yandex-ads-debug.aar ./example/android/plugins/godot-yandex-ads-release.aar
+      - cp godot-yandex-ads/build/outputs/aar/YandexAds.gdap ./example/android/plugins/YandexAds.gdap
+
+  proton:
+    deps: [ build ]
+    cmds:
+      - cp godot-yandex-ads/build/outputs/aar/godot-yandex-ads-release.aar ~/games/proton/android/plugins/godot-yandex-ads-release.aar
+      - cp godot-yandex-ads/build/outputs/aar/YandexAds.gdap ~/games/proton/android/plugins/YandexAds.gdap

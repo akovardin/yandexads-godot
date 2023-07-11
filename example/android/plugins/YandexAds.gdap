@@ -1,0 +1,9 @@
+[config]
+
+name="YandexAds"
+binary_type="local"
+binary="godot-yandex-ads-release.aar"
+
+[dependencies]
+
+remote=["com.yandex.android:mobileads:5.9.+"]
