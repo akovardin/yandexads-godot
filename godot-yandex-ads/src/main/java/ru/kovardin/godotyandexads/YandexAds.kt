@@ -19,7 +19,10 @@ import com.yandex.mobile.ads.common.ImpressionData
 import com.yandex.mobile.ads.common.MobileAds
 import com.yandex.mobile.ads.instream.MobileInstreamAds
 import com.yandex.mobile.ads.interstitial.InterstitialAd
+import com.yandex.mobile.ads.interstitial.InterstitialAdEventListener
+import com.yandex.mobile.ads.rewarded.Reward
 import com.yandex.mobile.ads.rewarded.RewardedAd
+import com.yandex.mobile.ads.rewarded.RewardedAdEventListener
 import org.godotengine.godot.Dictionary
 import org.godotengine.godot.Godot
 import org.godotengine.godot.plugin.GodotPlugin
@@ -43,13 +46,32 @@ class YandexAds(godot: Godot?) : GodotPlugin(godot) {
     override fun getPluginSignals(): Set<SignalInfo> {
         val signals: MutableSet<SignalInfo> = ArraySet()
         signals.add(SignalInfo("ads_initialized"))
-
+        // banner
         signals.add(SignalInfo("banner_loaded"))
         signals.add(SignalInfo("banner_failed_to_load", Integer::class.java))
         signals.add(SignalInfo("banner_ad_clicked"))
         signals.add(SignalInfo("banner_left_application"))
         signals.add(SignalInfo("banner_returned_to_application"))
         signals.add(SignalInfo("banner_on_impression", String::class.java))
+        // interstitial
+        signals.add(SignalInfo("interstitial_loaded"))
+        signals.add(SignalInfo("interstitial_failed_to_load", Integer::class.java))
+        signals.add(SignalInfo("interstitial_ad_shown"))
+        signals.add(SignalInfo("interstitial_ad_dismissed"))
+        signals.add(SignalInfo("interstitial_ad_clicked"))
+        signals.add(SignalInfo("interstitial_left_application"))
+        signals.add(SignalInfo("interstitial_returned_to_application"))
+        signals.add(SignalInfo("interstitial_on_impression", String::class.java))
+        //rewarded
+        signals.add(SignalInfo("rewarded_loaded"))
+        signals.add(SignalInfo("rewarded_failed_to_load", Integer::class.java))
+        signals.add(SignalInfo("rewarded_ad_shown"))
+        signals.add(SignalInfo("rewarded_ad_dismissed"))
+        signals.add(SignalInfo("rewarded_rewarded", Dictionary::class.java))
+        signals.add(SignalInfo("rewarded_ad_clicked"))
+        signals.add(SignalInfo("rewarded_left_application"))
+        signals.add(SignalInfo("reward_returned_to_application"))
+        signals.add(SignalInfo("rewarded_on_impression", String::class.java))
         return signals
     }
 
@@ -92,6 +114,17 @@ class YandexAds(godot: Godot?) : GodotPlugin(godot) {
 
     private fun request(): AdRequest {
         return AdRequest.Builder().build()
+    }
+
+    @UsedByGodot
+    fun loadBanner(id: String, params: Dictionary)  {
+        activity?.runOnUiThread {
+            if (banner == null) {
+                banner = createBanner(id, params)
+            } else {
+                banner?.loadAd(request())
+            }
+        }
     }
 
     private fun createBanner(id: String, params: Dictionary): BannerAdView {
@@ -150,18 +183,18 @@ class YandexAds(godot: Godot?) : GodotPlugin(godot) {
             }
 
             override fun onLeftApplication() {
-                Log.w(tag, "YandexAds: onLeftApplication")
+                Log.w(tag, "YandexAds: onBannerLeftApplication")
                 emitSignal("banner_left_application")
             }
 
             override fun onReturnedToApplication() {
-                Log.w(tag, "YandexAds: onReturnedToApplication")
+                Log.w(tag, "YandexAds: onBannerReturnedToApplication")
                 emitSignal("banner_returned_to_application")
             }
 
-            override fun onImpression(impressionData: ImpressionData?) {
+            override fun onImpression(impression: ImpressionData?) {
                 Log.w("godot", "YandexAds: onBannerAdImpression");
-                emitSignal("banner_on_impression", impressionData?.getRawData());
+                emitSignal("banner_on_impression", impression?.rawData.orEmpty());
             }
         })
 
@@ -172,18 +205,162 @@ class YandexAds(godot: Godot?) : GodotPlugin(godot) {
     }
 
     @UsedByGodot
-    fun loadBanner(id: String, params: Dictionary)  {
-        activity?.runOnUiThread {
-            if (banner == null) {
-                banner = createBanner(id, params)
+    fun showBanner() {
+
+    }
+
+    @UsedByGodot
+    fun hideBanner() {
+
+    }
+
+    @UsedByGodot
+    fun loadInterstitial(id: String) {
+        activity!!.runOnUiThread {
+            interstitial = createInterstitial(id)
+        }
+    }
+
+    private fun createInterstitial(id: String): InterstitialAd {
+        val interstitial = InterstitialAd(godot.requireContext())
+        interstitial.setAdUnitId(id)
+        interstitial.setInterstitialAdEventListener(object : InterstitialAdEventListener {
+            override fun onAdLoaded() {
+                Log.w("godot", "YandexAds: onInterstitialAdLoaded")
+                emitSignal("interstitial_loaded")
+            }
+
+            override fun onAdFailedToLoad(error: AdRequestError) {
+                Log.w(tag, "YandexAds: onInterstitialAdFailedToLoad. Error: " + error.code)
+                emitSignal("interstitial_failed_to_load", error.code)
+            }
+
+            override fun onAdShown() {
+                Log.w(tag, "YandexAds: onInterstitialAdShown")
+                emitSignal("interstitial_ad_shown")
+            }
+
+            override fun onAdDismissed() {
+                Log.w(tag, "YandexAds: onInterstitialAdDismissed")
+                emitSignal("interstitial_ad_dismissed")
+            }
+
+            override fun onAdClicked() {
+                Log.w(tag, "YandexAds: onInterstitialAdClicked")
+                emitSignal("interstitial_ad_clicked")
+            }
+
+            override fun onLeftApplication() {
+                Log.w(tag, "YandexAds: onInterstitialLeftApplication")
+                emitSignal("interstitial_left_application")
+            }
+
+            override fun onReturnedToApplication() {
+                Log.w(tag, "YandexAds: onInterstitialReturnedToApplication")
+                emitSignal("interstitial_returned_to_application")
+            }
+
+            override fun onImpression(impression: ImpressionData?) {
+                Log.w(tag, "YandexAds: onInterstitialImpression")
+                emitSignal("interstitial_on_impression", impression?.rawData.orEmpty())
+            }
+
+        })
+
+        interstitial.loadAd(request())
+        return interstitial
+    }
+
+    @UsedByGodot
+    fun showInterstitial() {
+        activity!!.runOnUiThread {
+            if (interstitial != null && interstitial!!.isLoaded) {
+                interstitial?.show()
             } else {
-                banner?.loadAd(request())
+                Log.w(tag, "YandexAds: interstitial not loaded");
             }
         }
     }
 
-    fun showBanner() {
+    fun hideInterstitial() {
 
+    }
+
+
+    @UsedByGodot
+    fun loadRewarded(id: String) {
+        activity!!.runOnUiThread {
+            rewarded = createRewarded(id)
+        }
+    }
+
+    private fun createRewarded(id: String): RewardedAd {
+        val rewarded = RewardedAd(godot.requireContext())
+        rewarded.setAdUnitId(id)
+        rewarded.setRewardedAdEventListener(object : RewardedAdEventListener {
+            override fun onAdLoaded() {
+                Log.w("godot", "YandexAds: onRewardedAdLoaded")
+                emitSignal("rewarded_loaded")
+            }
+
+            override fun onAdFailedToLoad(error: AdRequestError) {
+                Log.w(tag, "YandexAds: onRewardedAdFailedToLoad. Error: " + error.code)
+                emitSignal("rewarded_failed_to_load", error.code)
+            }
+
+            override fun onAdShown() {
+                Log.w(tag, "YandexAds: onRewardedAdShown")
+                emitSignal("rewarded_ad_shown")
+            }
+
+            override fun onAdDismissed() {
+                Log.w(tag, "YandexAds: onRewardedAdDismissed")
+                emitSignal("rewarded_ad_dismissed")
+            }
+
+            override fun onRewarded(reward: Reward) {
+                Log.w(tag, "YandexAds: onRewarded")
+                val data = Dictionary()
+                data.set("amount", reward.amount)
+                data.set("type", reward.type)
+                emitSignal("rewarded_rewarded", data)
+            }
+
+            override fun onAdClicked() {
+                Log.w(tag, "YandexAds: onRewardedAdClicked")
+                emitSignal("rewarded_ad_clicked")
+            }
+
+            override fun onLeftApplication() {
+                Log.w(tag, "YandexAds: onRewardLeftApplication")
+                emitSignal("reward_left_application")
+            }
+
+            override fun onReturnedToApplication() {
+                Log.w(tag, "YandexAds: onRewardedReturnedToApplication")
+                emitSignal("rewarded_returned_to_application")
+            }
+
+            override fun onImpression(impression: ImpressionData?) {
+                Log.w(tag, "YandexAds: onRewardedImpression")
+                emitSignal("rewarded_on_impression", impression?.rawData.orEmpty())
+            }
+
+        })
+
+        rewarded.loadAd(request())
+        return rewarded
+    }
+
+    @UsedByGodot
+    fun showRewarded() {
+        activity!!.runOnUiThread {
+            if (rewarded != null && rewarded!!.isLoaded) {
+                rewarded?.show()
+            } else {
+                Log.w(tag, "YandexAds: rewarded not loaded");
+            }
+        }
     }
 
     private fun getSafeArea(): Rect {
